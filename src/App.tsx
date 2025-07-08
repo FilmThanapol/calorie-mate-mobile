@@ -1,3 +1,4 @@
+
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "./components/ThemeProvider";
@@ -7,16 +8,16 @@ import NotFound from "./pages/NotFound";
 
 const App = () => {
   return (
-    <DataProvider>
-      <ThemeProvider>
+    <ThemeProvider defaultTheme="system" storageKey="nutritrack-theme">
+      <DataProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
-      </ThemeProvider>
-    </DataProvider>
+      </DataProvider>
+    </ThemeProvider>
   );
 };
 
