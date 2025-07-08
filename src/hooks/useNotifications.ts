@@ -234,7 +234,12 @@ export const useNotifications = (): UseNotificationsReturn => {
       const today = new Date().toDateString();
       
       if (lastCalorieNotification !== today) {
-        showNotification(notificationService.templates.goalAchieved('calories', dailyGoals.calories));
+        showNotification({
+          title: '🎉 Calorie Goal Achieved!',
+          body: `Congratulations! You've reached your daily calorie goal of ${dailyGoals.calories} calories.`,
+          icon: '🎯',
+          tag: 'calorie-goal'
+        });
         localStorage.setItem('last-calorie-goal-notification', today);
       }
     }
@@ -245,7 +250,12 @@ export const useNotifications = (): UseNotificationsReturn => {
       const today = new Date().toDateString();
       
       if (lastProteinNotification !== today) {
-        showNotification(notificationService.templates.goalAchieved('protein', dailyGoals.protein));
+        showNotification({
+          title: '💪 Protein Goal Achieved!',
+          body: `Amazing! You've reached your daily protein goal of ${dailyGoals.protein}g.`,
+          icon: '🥩',
+          tag: 'protein-goal'
+        });
         localStorage.setItem('last-protein-goal-notification', today);
       }
     }

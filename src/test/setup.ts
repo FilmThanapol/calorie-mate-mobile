@@ -65,29 +65,26 @@ Object.defineProperty(navigator, 'mediaDevices', {
 global.URL.createObjectURL = vi.fn().mockReturnValue('mock-url');
 global.URL.revokeObjectURL = vi.fn();
 
-// Mock FileReader
-global.FileReader = vi.fn().mockImplementation(() => ({
+// Mock FileReader with proper constructor
+const FileReaderMock = vi.fn().mockImplementation(() => ({
   readAsDataURL: vi.fn(),
   onload: null,
   onerror: null,
   result: 'data:image/jpeg;base64,mock-data',
 }));
+FileReaderMock.EMPTY = 0;
+FileReaderMock.LOADING = 1;
+FileReaderMock.DONE = 2;
+global.FileReader = FileReaderMock as any;
 
-// Mock Notification API
-global.Notification = vi.fn().mockImplementation(() => ({
+// Mock Notification API with proper constructor and static properties
+const NotificationMock = vi.fn().mockImplementation(() => ({
   close: vi.fn(),
   onclick: null,
 }));
-
-Object.defineProperty(Notification, 'permission', {
-  value: 'default',
-  writable: true,
-});
-
-Object.defineProperty(Notification, 'requestPermission', {
-  value: vi.fn().mockResolvedValue('granted'),
-  writable: true,
-});
+NotificationMock.permission = 'default';
+NotificationMock.requestPermission = vi.fn().mockResolvedValue('granted');
+global.Notification = NotificationMock as any;
 
 // Mock localStorage
 const localStorageMock = {
