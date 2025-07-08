@@ -1,4 +1,3 @@
-
 import { expect, afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import * as matchers from '@testing-library/jest-dom/matchers';
@@ -107,7 +106,7 @@ class MockNotification {
   onerror: ((this: Notification, ev: Event) => any) | null = null;
   onshow: ((this: Notification, ev: Event) => any) | null = null;
   
-  readonly actions: readonly NotificationAction[] = [];
+  readonly actions: readonly any[] = [];
   readonly badge = '';
   readonly body = '';
   readonly data: any = null;
