@@ -1,3 +1,4 @@
+
 import { expect, afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import * as matchers from '@testing-library/jest-dom/matchers';
@@ -64,8 +65,8 @@ Object.defineProperty(navigator, 'mediaDevices', {
 global.URL.createObjectURL = vi.fn().mockReturnValue('mock-url');
 global.URL.revokeObjectURL = vi.fn();
 
-// Mock FileReader with proper constructor and static properties
-class MockFileReader {
+// Mock FileReader
+global.FileReader = class MockFileReader {
   static readonly EMPTY = 0;
   static readonly LOADING = 1;
   static readonly DONE = 2;
@@ -87,12 +88,10 @@ class MockFileReader {
   onloadstart = null;
   onprogress = null;
   error = null;
-}
+} as any;
 
-global.FileReader = MockFileReader as any;
-
-// Mock Notification API with proper constructor and static properties
-class MockNotification {
+// Mock Notification API
+global.Notification = class MockNotification {
   static permission: NotificationPermission = 'default';
   static requestPermission = vi.fn().mockResolvedValue('granted' as NotificationPermission);
   
@@ -125,9 +124,7 @@ class MockNotification {
   addEventListener = vi.fn();
   dispatchEvent = vi.fn();
   removeEventListener = vi.fn();
-}
-
-global.Notification = MockNotification as any;
+} as any;
 
 // Mock localStorage
 const localStorageMock = {
