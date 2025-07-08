@@ -65,26 +65,70 @@ Object.defineProperty(navigator, 'mediaDevices', {
 global.URL.createObjectURL = vi.fn().mockReturnValue('mock-url');
 global.URL.revokeObjectURL = vi.fn();
 
-// Mock FileReader with proper constructor
-const FileReaderMock = vi.fn().mockImplementation(() => ({
-  readAsDataURL: vi.fn(),
-  onload: null,
-  onerror: null,
-  result: 'data:image/jpeg;base64,mock-data',
-}));
-FileReaderMock.EMPTY = 0;
-FileReaderMock.LOADING = 1;
-FileReaderMock.DONE = 2;
-global.FileReader = FileReaderMock as any;
+// Mock FileReader with proper constructor and static properties
+class MockFileReader {
+  static readonly EMPTY = 0;
+  static readonly LOADING = 1;
+  static readonly DONE = 2;
+  
+  readAsDataURL = vi.fn();
+  onload: ((this: FileReader, ev: ProgressEvent<FileReader>) => any) | null = null;
+  onerror: ((this: FileReader, ev: ProgressEvent<FileReader>) => any) | null = null;
+  result: string | ArrayBuffer | null = 'data:image/jpeg;base64,mock-data';
+  readyState = 0;
+  abort = vi.fn();
+  addEventListener = vi.fn();
+  dispatchEvent = vi.fn();
+  removeEventListener = vi.fn();
+  readAsArrayBuffer = vi.fn();
+  readAsBinaryString = vi.fn();
+  readAsText = vi.fn();
+  onabort = null;
+  onloadend = null;
+  onloadstart = null;
+  onprogress = null;
+  error = null;
+}
+
+global.FileReader = MockFileReader as any;
 
 // Mock Notification API with proper constructor and static properties
-const NotificationMock = vi.fn().mockImplementation(() => ({
-  close: vi.fn(),
-  onclick: null,
-}));
-NotificationMock.permission = 'default';
-NotificationMock.requestPermission = vi.fn().mockResolvedValue('granted');
-global.Notification = NotificationMock as any;
+class MockNotification {
+  static permission: NotificationPermission = 'default';
+  static requestPermission = vi.fn().mockResolvedValue('granted' as NotificationPermission);
+  
+  constructor(title: string, options?: NotificationOptions) {
+    // Mock implementation
+  }
+  
+  close = vi.fn();
+  onclick: ((this: Notification, ev: Event) => any) | null = null;
+  onclose: ((this: Notification, ev: Event) => any) | null = null;
+  onerror: ((this: Notification, ev: Event) => any) | null = null;
+  onshow: ((this: Notification, ev: Event) => any) | null = null;
+  
+  readonly actions: readonly NotificationAction[] = [];
+  readonly badge = '';
+  readonly body = '';
+  readonly data: any = null;
+  readonly dir: NotificationDirection = 'auto';
+  readonly icon = '';
+  readonly image = '';
+  readonly lang = '';
+  readonly renotify = false;
+  readonly requireInteraction = false;
+  readonly silent = false;
+  readonly tag = '';
+  readonly timestamp = Date.now();
+  readonly title = '';
+  readonly vibrate: readonly number[] = [];
+  
+  addEventListener = vi.fn();
+  dispatchEvent = vi.fn();
+  removeEventListener = vi.fn();
+}
+
+global.Notification = MockNotification as any;
 
 // Mock localStorage
 const localStorageMock = {
