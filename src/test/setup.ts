@@ -2,6 +2,7 @@
 import { expect, afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import * as matchers from '@testing-library/jest-dom/matchers';
+import React from 'react';
 
 // Extend Vitest's expect with jest-dom matchers
 expect.extend(matchers);
@@ -158,15 +159,24 @@ vi.mock('chart.js', () => ({
 
 // Mock react-chartjs-2
 vi.mock('react-chartjs-2', () => ({
-  Line: vi.fn().mockImplementation(({ data, options }) => (
-    <div data-testid="line-chart" data-chart-data={JSON.stringify(data)} />
-  )),
-  Bar: vi.fn().mockImplementation(({ data, options }) => (
-    <div data-testid="bar-chart" data-chart-data={JSON.stringify(data)} />
-  )),
-  Doughnut: vi.fn().mockImplementation(({ data, options }) => (
-    <div data-testid="doughnut-chart" data-chart-data={JSON.stringify(data)} />
-  )),
+  Line: vi.fn().mockImplementation(({ data }) => 
+    React.createElement('div', { 
+      'data-testid': 'line-chart', 
+      'data-chart-data': JSON.stringify(data) 
+    })
+  ),
+  Bar: vi.fn().mockImplementation(({ data }) => 
+    React.createElement('div', { 
+      'data-testid': 'bar-chart', 
+      'data-chart-data': JSON.stringify(data) 
+    })
+  ),
+  Doughnut: vi.fn().mockImplementation(({ data }) => 
+    React.createElement('div', { 
+      'data-testid': 'doughnut-chart', 
+      'data-chart-data': JSON.stringify(data) 
+    })
+  ),
 }));
 
 // Mock Lucide React icons
@@ -182,9 +192,13 @@ vi.mock('lucide-react', () => {
 
   const mockIcons: any = {};
   icons.forEach(icon => {
-    mockIcons[icon] = vi.fn().mockImplementation(({ className, ...props }) => (
-      React.createElement('svg', { className, 'data-testid': `${icon.toLowerCase()}-icon`, ...props })
-    ));
+    mockIcons[icon] = vi.fn().mockImplementation(({ className, ...props }) =>
+      React.createElement('svg', { 
+        className, 
+        'data-testid': `${icon.toLowerCase()}-icon`, 
+        ...props 
+      })
+    );
   });
 
   return mockIcons;
