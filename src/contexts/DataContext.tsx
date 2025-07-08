@@ -1,289 +1,295 @@
+
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import type { Tables } from '@/integrations/supabase/types';
 
-export interface MealData {
-  id: string;
-  date: string;
-  time: string;
-  food_name: string;
-  amount: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  fiber: number;
-  sugar: number;
-  sodium: number;
-  image_url: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface DailyGoals {
-  calories: number;
-  protein: number;
-}
-
-export interface AppSettings {
-  dailyGoals: DailyGoals;
-  notifications: {
-    mealReminders: boolean;
-    goalReminders: boolean;
-    waterReminders: boolean;
-  };
-  language: string;
-  theme: 'light' | 'dark';
-}
+type Meal = Tables<'meals'>;
+type Settings = Tables<'settings'>;
 
 interface DataState {
-  meals: MealData[];
-  settings: AppSettings;
+  meals: Meal[];
+  settings: Settings;
   isLoading: boolean;
   error: string | null;
 }
 
-type DataAction =
+interface DataActions {
+  addMeal: (meal: Omit<Meal, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateMeal: (id: string, updates: Partial<Meal>) => Promise<void>;
+  deleteMeal: (id: string) => Promise<void>;
+  updateSettings: (updates: Partial<Settings>) => Promise<void>;
+  refreshData: () => Promise<void>;
+}
+
+interface DataContextType {
+  state: DataState;
+  actions: DataActions;
+}
+
+type DataAction = 
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'LOAD_DATA'; payload: { meals: MealData[]; settings: AppSettings } }
-  | { type: 'ADD_MEAL'; payload: MealData }
-  | { type: 'UPDATE_MEAL'; payload: MealData }
+  | { type: 'SET_MEALS'; payload: Meal[] }
+  | { type: 'ADD_MEAL'; payload: Meal }
+  | { type: 'UPDATE_MEAL'; payload: { id: string; updates: Partial<Meal> } }
   | { type: 'DELETE_MEAL'; payload: string }
-  | { type: 'UPDATE_SETTINGS'; payload: Partial<AppSettings> };
-
-const initialSettings: AppSettings = {
-  dailyGoals: { calories: 2000, protein: 150 },
-  notifications: {
-    mealReminders: false,
-    goalReminders: false,
-    waterReminders: false,
-  },
-  language: 'en',
-  theme: 'light',
-};
+  | { type: 'SET_SETTINGS'; payload: Settings };
 
 const initialState: DataState = {
   meals: [],
-  settings: initialSettings,
-  isLoading: false,
+  settings: {
+    id: '',
+    daily_calories: 2000,
+    daily_protein: 150.0,
+    created_at: '',
+    updated_at: '',
+  },
+  isLoading: true,
   error: null,
 };
 
-function dataReducer(state: DataState, action: DataAction): DataState {
+const dataReducer = (state: DataState, action: DataAction): DataState => {
   switch (action.type) {
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
     case 'SET_ERROR':
-      return { ...state, error: action.payload };
-    case 'LOAD_DATA':
-      return {
-        ...state,
-        meals: action.payload.meals,
-        settings: action.payload.settings,
-        isLoading: false,
-        error: null,
-      };
+      return { ...state, error: action.payload, isLoading: false };
+    case 'SET_MEALS':
+      return { ...state, meals: action.payload };
     case 'ADD_MEAL':
-      return {
-        ...state,
-        meals: [...state.meals, action.payload],
-        error: null,
-      };
+      return { ...state, meals: [...state.meals, action.payload] };
     case 'UPDATE_MEAL':
       return {
         ...state,
         meals: state.meals.map(meal =>
-          meal.id === action.payload.id ? action.payload : meal
+          meal.id === action.payload.id ? { ...meal, ...action.payload.updates } : meal
         ),
-        error: null,
       };
     case 'DELETE_MEAL':
       return {
         ...state,
         meals: state.meals.filter(meal => meal.id !== action.payload),
-        error: null,
       };
-    case 'UPDATE_SETTINGS':
-      return {
-        ...state,
-        settings: { ...state.settings, ...action.payload },
-        error: null,
-      };
+    case 'SET_SETTINGS':
+      return { ...state, settings: action.payload };
     default:
       return state;
   }
-}
+};
 
-interface DataContextType {
-  state: DataState;
-  actions: {
-    addMeal: (meal: Omit<MealData, 'id' | 'created_at' | 'updated_at'>) => Promise<MealData>;
-    updateMeal: (id: string, meal: Partial<MealData>) => Promise<MealData>;
-    deleteMeal: (id: string) => Promise<void>;
-    updateSettings: (settings: Partial<AppSettings>) => Promise<void>;
-    loadData: () => Promise<void>;
-    exportData: () => string;
-    importData: (data: string) => Promise<void>;
+const DataContext = createContext<DataContextType | null>(null);
+
+export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [state, dispatch] = useReducer(dataReducer, initialState);
+  const { toast } = useToast();
+
+  // Load initial data
+  const loadData = async () => {
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      
+      // Load meals
+      const { data: meals, error: mealsError } = await supabase
+        .from('meals')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (mealsError) throw mealsError;
+
+      // Load settings
+      const { data: settings, error: settingsError } = await supabase
+        .from('settings')
+        .select('*')
+        .limit(1)
+        .single();
+
+      if (settingsError && settingsError.code !== 'PGRST116') {
+        throw settingsError;
+      }
+
+      dispatch({ type: 'SET_MEALS', payload: meals || [] });
+      if (settings) {
+        dispatch({ type: 'SET_SETTINGS', payload: settings });
+      }
+      dispatch({ type: 'SET_ERROR', payload: null });
+    } catch (error) {
+      console.error('Error loading data:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to load data' });
+      toast({
+        title: "Error",
+        description: "Failed to load data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
+    }
   };
-}
 
-const DataContext = createContext<DataContextType | undefined>(undefined);
+  // Add meal
+  const addMeal = async (mealData: Omit<Meal, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('meals')
+        .insert([mealData])
+        .select()
+        .single();
 
-export const useData = () => {
+      if (error) throw error;
+
+      dispatch({ type: 'ADD_MEAL', payload: data });
+      toast({
+        title: "Success! 🎉",
+        description: "Meal added successfully.",
+      });
+    } catch (error) {
+      console.error('Error adding meal:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add meal. Please try again.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  // Update meal
+  const updateMeal = async (id: string, updates: Partial<Meal>) => {
+    try {
+      const { error } = await supabase
+        .from('meals')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) throw error;
+
+      dispatch({ type: 'UPDATE_MEAL', payload: { id, updates } });
+      toast({
+        title: "Success",
+        description: "Meal updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error updating meal:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update meal. Please try again.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  // Delete meal
+  const deleteMeal = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('meals')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      dispatch({ type: 'DELETE_MEAL', payload: id });
+      toast({
+        title: "Success",
+        description: "Meal deleted successfully.",
+      });
+    } catch (error) {
+      console.error('Error deleting meal:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete meal. Please try again.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  // Update settings
+  const updateSettings = async (updates: Partial<Settings>) => {
+    try {
+      const { data, error } = await supabase
+        .from('settings')
+        .update(updates)
+        .eq('id', state.settings.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      dispatch({ type: 'SET_SETTINGS', payload: data });
+      toast({
+        title: "Success",
+        description: "Settings updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error updating settings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update settings. Please try again.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  // Set up real-time subscriptions
+  useEffect(() => {
+    loadData();
+
+    // Subscribe to meals changes
+    const mealsSubscription = supabase
+      .channel('meals-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'meals' }, (payload) => {
+        console.log('Meals change received:', payload);
+        
+        if (payload.eventType === 'INSERT') {
+          dispatch({ type: 'ADD_MEAL', payload: payload.new as Meal });
+        } else if (payload.eventType === 'UPDATE') {
+          dispatch({ type: 'UPDATE_MEAL', payload: { id: payload.new.id, updates: payload.new as Partial<Meal> } });
+        } else if (payload.eventType === 'DELETE') {
+          dispatch({ type: 'DELETE_MEAL', payload: payload.old.id });
+        }
+      })
+      .subscribe();
+
+    // Subscribe to settings changes
+    const settingsSubscription = supabase
+      .channel('settings-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, (payload) => {
+        console.log('Settings change received:', payload);
+        
+        if (payload.eventType === 'UPDATE') {
+          dispatch({ type: 'SET_SETTINGS', payload: payload.new as Settings });
+        }
+      })
+      .subscribe();
+
+    return () => {
+      mealsSubscription.unsubscribe();
+      settingsSubscription.unsubscribe();
+    };
+  }, []);
+
+  const actions: DataActions = {
+    addMeal,
+    updateMeal,
+    deleteMeal,
+    updateSettings,
+    refreshData: loadData,
+  };
+
+  return (
+    <DataContext.Provider value={{ state, actions }}>
+      {children}
+    </DataContext.Provider>
+  );
+};
+
+export const useData = (): DataContextType => {
   const context = useContext(DataContext);
   if (!context) {
     throw new Error('useData must be used within a DataProvider');
   }
   return context;
-};
-
-const STORAGE_KEYS = {
-  MEALS: 'nutritrack_meals',
-  SETTINGS: 'nutritrack_settings',
-};
-
-export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, dispatch] = useReducer(dataReducer, initialState);
-
-  // Load data from localStorage on mount
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  // Save data to localStorage whenever state changes
-  useEffect(() => {
-    if (state.meals.length > 0 || Object.keys(state.settings).length > 0) {
-      localStorage.setItem(STORAGE_KEYS.MEALS, JSON.stringify(state.meals));
-      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(state.settings));
-    }
-  }, [state.meals, state.settings]);
-
-  const generateId = () => {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
-  };
-
-  const loadData = async () => {
-    try {
-      dispatch({ type: 'SET_LOADING', payload: true });
-      
-      const mealsData = localStorage.getItem(STORAGE_KEYS.MEALS);
-      const settingsData = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      
-      const meals: MealData[] = mealsData ? JSON.parse(mealsData) : [];
-      const settings: AppSettings = settingsData ? 
-        { ...initialSettings, ...JSON.parse(settingsData) } : 
-        initialSettings;
-      
-      dispatch({ type: 'LOAD_DATA', payload: { meals, settings } });
-    } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to load data' });
-      console.error('Error loading data:', error);
-    }
-  };
-
-  const addMeal = async (mealData: Omit<MealData, 'id' | 'created_at' | 'updated_at'>): Promise<MealData> => {
-    try {
-      const now = new Date().toISOString();
-      const newMeal: MealData = {
-        ...mealData,
-        id: generateId(),
-        created_at: now,
-        updated_at: now,
-      };
-      
-      dispatch({ type: 'ADD_MEAL', payload: newMeal });
-      return newMeal;
-    } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to add meal' });
-      throw error;
-    }
-  };
-
-  const updateMeal = async (id: string, mealData: Partial<MealData>): Promise<MealData> => {
-    try {
-      const existingMeal = state.meals.find(meal => meal.id === id);
-      if (!existingMeal) {
-        throw new Error('Meal not found');
-      }
-      
-      const updatedMeal: MealData = {
-        ...existingMeal,
-        ...mealData,
-        updated_at: new Date().toISOString(),
-      };
-      
-      dispatch({ type: 'UPDATE_MEAL', payload: updatedMeal });
-      return updatedMeal;
-    } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to update meal' });
-      throw error;
-    }
-  };
-
-  const deleteMeal = async (id: string): Promise<void> => {
-    try {
-      dispatch({ type: 'DELETE_MEAL', payload: id });
-    } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to delete meal' });
-      throw error;
-    }
-  };
-
-  const updateSettings = async (settings: Partial<AppSettings>): Promise<void> => {
-    try {
-      dispatch({ type: 'UPDATE_SETTINGS', payload: settings });
-    } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to update settings' });
-      throw error;
-    }
-  };
-
-  const exportData = (): string => {
-    const exportData = {
-      meals: state.meals,
-      settings: state.settings,
-      exportedAt: new Date().toISOString(),
-    };
-    return JSON.stringify(exportData, null, 2);
-  };
-
-  const importData = async (data: string): Promise<void> => {
-    try {
-      dispatch({ type: 'SET_LOADING', payload: true });
-      const parsedData = JSON.parse(data);
-      
-      if (parsedData.meals && parsedData.settings) {
-        dispatch({ 
-          type: 'LOAD_DATA', 
-          payload: { 
-            meals: parsedData.meals, 
-            settings: { ...initialSettings, ...parsedData.settings } 
-          } 
-        });
-      } else {
-        throw new Error('Invalid data format');
-      }
-    } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to import data' });
-      throw error;
-    }
-  };
-
-  const contextValue: DataContextType = {
-    state,
-    actions: {
-      addMeal,
-      updateMeal,
-      deleteMeal,
-      updateSettings,
-      loadData,
-      exportData,
-      importData,
-    },
-  };
-
-  return (
-    <DataContext.Provider value={contextValue}>
-      {children}
-    </DataContext.Provider>
-  );
 };

@@ -1,3 +1,4 @@
+
 import { expect, afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import * as matchers from '@testing-library/jest-dom/matchers';
@@ -179,10 +180,10 @@ vi.mock('lucide-react', () => {
     'Filter', 'ArrowUpDown', 'Image', 'Download', 'Calendar'
   ];
 
-  const mockIcons = {};
+  const mockIcons: any = {};
   icons.forEach(icon => {
     mockIcons[icon] = vi.fn().mockImplementation(({ className, ...props }) => (
-      <svg className={className} data-testid={`${icon.toLowerCase()}-icon`} {...props} />
+      React.createElement('svg', { className, 'data-testid': `${icon.toLowerCase()}-icon`, ...props })
     ));
   });
 
@@ -216,7 +217,7 @@ export const renderWithProviders = (ui: React.ReactElement, options = {}) => {
   const { QueryClient, QueryClientProvider } = require('@tanstack/react-query');
   const { BrowserRouter } = require('react-router-dom');
   const { ThemeProvider } = require('@/components/ThemeProvider');
-  const { I18nProvider } = require('@/components/I18nProvider');
+  const { DataProvider } = require('@/contexts/DataContext');
 
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -226,15 +227,15 @@ export const renderWithProviders = (ui: React.ReactElement, options = {}) => {
   });
 
   const AllTheProviders = ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      <I18nProvider>
-        <ThemeProvider>
-          <BrowserRouter>
-            {children}
-          </BrowserRouter>
-        </ThemeProvider>
-      </I18nProvider>
-    </QueryClientProvider>
+    React.createElement(QueryClientProvider, { client: queryClient },
+      React.createElement(DataProvider, {},
+        React.createElement(ThemeProvider, {},
+          React.createElement(BrowserRouter, {},
+            children
+          )
+        )
+      )
+    )
   );
 
   return require('@testing-library/react').render(ui, {

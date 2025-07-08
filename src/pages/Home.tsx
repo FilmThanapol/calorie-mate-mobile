@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +24,7 @@ const Home = () => {
     return todayMeals.reduce(
       (totals, meal) => ({
         calories: totals.calories + meal.calories,
-        protein: totals.protein + meal.protein,
+        protein: totals.protein + Number(meal.protein),
       }),
       { calories: 0, protein: 0 }
     );
@@ -37,13 +38,31 @@ const Home = () => {
       .sort((a, b) => a.time.localeCompare(b.time));
   }, [state.meals]);
 
-  const dailyGoals = state.settings.dailyGoals;
+  const dailyGoals = {
+    calories: state.settings.daily_calories,
+    protein: Number(state.settings.daily_protein),
+  };
+  
   const caloriesProgress = Math.min((todayTotals.calories / dailyGoals.calories) * 100, 100);
   const proteinProgress = Math.min((todayTotals.protein / dailyGoals.protein) * 100, 100);
 
   const handleGoalsUpdate = async (newGoals: { calories: number; protein: number }) => {
-    await actions.updateSettings({ dailyGoals: newGoals });
+    await actions.updateSettings({ 
+      daily_calories: newGoals.calories, 
+      daily_protein: newGoals.protein 
+    });
   };
+
+  if (state.isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 p-4 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your nutrition data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 p-4">
