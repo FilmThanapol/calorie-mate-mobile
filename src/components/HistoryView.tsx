@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -112,8 +113,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
 
   const exportToCSV = () => {
     const headers = [
-      'Date', 'Time', 'Food Name', 'Amount', 'Calories', 'Protein (g)',
-      'Carbs (g)', 'Fat (g)', 'Fiber (g)', 'Sugar (g)', 'Sodium (mg)'
+      'Date', 'Time', 'Food Name', 'Amount', 'Calories', 'Protein (g)'
     ];
 
     const csvContent = [
@@ -124,12 +124,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
         `"${meal.food_name}"`,
         `"${meal.amount}"`,
         meal.calories,
-        meal.protein,
-        meal.carbs,
-        meal.fat,
-        meal.fiber,
-        meal.sugar,
-        meal.sodium
+        meal.protein
       ].join(','))
     ].join('\n');
 
@@ -218,8 +213,6 @@ const HistoryView: React.FC<HistoryViewProps> = ({
       setSortDirection('desc');
     }
   };
-
-
 
   // Get nutrition summary for filtered data
   const summary = useMemo(() => {

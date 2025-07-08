@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Loader2, Camera, Upload, X } from 'lucide-react';
-import { useData } from '@/contexts/DataContext';
+import { Loader2, Upload, X } from 'lucide-react';
+import { useData, type MealData } from '@/contexts/DataContext';
 
 const mealSchema = z.object({
   food_name: z.string().min(1, "Food name is required"),
@@ -24,9 +24,15 @@ interface MealEntryFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  meal?: MealData; // Optional meal for editing
 }
 
-const MealEntryForm: React.FC<MealEntryFormProps> = ({ isOpen, onClose, onSuccess }) => {
+const MealEntryForm: React.FC<MealEntryFormProps> = ({ 
+  isOpen, 
+  onClose, 
+  onSuccess,
+  meal 
+}) => {
   const { actions } = useData();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState<string>('');
@@ -41,6 +47,21 @@ const MealEntryForm: React.FC<MealEntryFormProps> = ({ isOpen, onClose, onSucces
       image_url: '',
     },
   });
+
+  // Reset form when meal prop changes (for editing)
+  useEffect(() => {
+    if (meal) {
+      form.setValue('food_name', meal.food_name);
+      form.setValue('amount', meal.amount);
+      form.setValue('calories', meal.calories);
+      form.setValue('protein', meal.protein);
+      form.setValue('image_url', meal.image_url || '');
+      setImagePreview(meal.image_url || '');
+    } else {
+      form.reset();
+      setImagePreview('');
+    }
+  }, [meal, form]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -64,14 +85,30 @@ const MealEntryForm: React.FC<MealEntryFormProps> = ({ isOpen, onClose, onSucces
     try {
       setIsSubmitting(true);
       
-      const now = new Date();
-      const mealData = {
-        ...data,
-        date: now.toISOString().split('T')[0],
-        time: now.toTimeString().slice(0, 8),
-      };
+      if (meal) {
+        // Update existing meal
+        await actions.updateMeal(meal.id, {
+          food_name: data.food_name,
+          amount: data.amount,
+          calories: data.calories,
+          protein: data.protein,
+          image_url: data.image_url || null,
+        });
+      } else {
+        // Add new meal
+        const now = new Date();
+        const mealData = {
+          food_name: data.food_name,
+          amount: data.amount,
+          calories: data.calories,
+          protein: data.protein,
+          image_url: data.image_url || null,
+          date: now.toISOString().split('T')[0],
+          time: now.toTimeString().slice(0, 8),
+        };
 
-      await actions.addMeal(mealData);
+        await actions.addMeal(mealData);
+      }
       
       form.reset();
       setImagePreview('');
@@ -89,7 +126,7 @@ const MealEntryForm: React.FC<MealEntryFormProps> = ({ isOpen, onClose, onSucces
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold flex items-center gap-2">
-            🍽️ Add New Meal
+            🍽️ {meal ? 'Edit Meal' : 'Add New Meal'}
           </DialogTitle>
         </DialogHeader>
 
@@ -213,10 +250,10 @@ const MealEntryForm: React.FC<MealEntryFormProps> = ({ isOpen, onClose, onSucces
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Adding...
+                    {meal ? 'Updating...' : 'Adding...'}
                   </>
                 ) : (
-                  'Add Meal'
+                  meal ? 'Update Meal' : 'Add Meal'
                 )}
               </Button>
             </div>

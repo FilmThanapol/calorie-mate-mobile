@@ -7,6 +7,9 @@ import type { Tables } from '@/integrations/supabase/types';
 type Meal = Tables<'meals'>;
 type Settings = Tables<'settings'>;
 
+// Export MealData type for external use
+export type MealData = Meal;
+
 interface DataState {
   meals: Meal[];
   settings: Settings;
@@ -20,6 +23,8 @@ interface DataActions {
   deleteMeal: (id: string) => Promise<void>;
   updateSettings: (updates: Partial<Settings>) => Promise<void>;
   refreshData: () => Promise<void>;
+  exportData: () => string;
+  importData: (jsonData: string) => Promise<void>;
 }
 
 interface DataContextType {
@@ -233,6 +238,53 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Export data
+  const exportData = () => {
+    const exportObject = {
+      meals: state.meals,
+      settings: state.settings,
+      exportedAt: new Date().toISOString(),
+    };
+    return JSON.stringify(exportObject, null, 2);
+  };
+
+  // Import data
+  const importData = async (jsonData: string) => {
+    try {
+      const importedData = JSON.parse(jsonData);
+      
+      if (importedData.meals && Array.isArray(importedData.meals)) {
+        // Import meals
+        for (const meal of importedData.meals) {
+          const { id, created_at, updated_at, ...mealData } = meal;
+          await addMeal({
+            ...mealData,
+            date: mealData.date || new Date().toISOString().split('T')[0],
+            time: mealData.time || new Date().toTimeString().slice(0, 8),
+          });
+        }
+      }
+
+      if (importedData.settings) {
+        const { id, created_at, updated_at, ...settingsData } = importedData.settings;
+        await updateSettings(settingsData);
+      }
+
+      toast({
+        title: "Success",
+        description: "Data imported successfully.",
+      });
+    } catch (error) {
+      console.error('Error importing data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to import data. Please check the format.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   // Set up real-time subscriptions
   useEffect(() => {
     loadData();
@@ -277,6 +329,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     deleteMeal,
     updateSettings,
     refreshData: loadData,
+    exportData,
+    importData,
   };
 
   return (

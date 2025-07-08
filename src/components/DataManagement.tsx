@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,8 +55,7 @@ const DataManagement: React.FC = () => {
       setIsExporting(true);
       
       const headers = [
-        'Date', 'Time', 'Food Name', 'Amount', 'Calories', 'Protein (g)', 
-        'Carbs (g)', 'Fat (g)', 'Fiber (g)', 'Sugar (g)', 'Sodium (mg)', 'Image URL'
+        'Date', 'Time', 'Food Name', 'Amount', 'Calories', 'Protein (g)', 'Image URL'
       ];
       
       const csvContent = [
@@ -67,11 +67,6 @@ const DataManagement: React.FC = () => {
           `"${meal.amount}"`,
           meal.calories,
           meal.protein,
-          meal.carbs,
-          meal.fat,
-          meal.fiber,
-          meal.sugar,
-          meal.sodium,
           meal.image_url || ''
         ].join(','))
       ].join('\n');
@@ -124,12 +119,7 @@ const DataManagement: React.FC = () => {
               amount: values[3].replace(/"/g, ''),
               calories: Number(values[4]) || 0,
               protein: Number(values[5]) || 0,
-              carbs: Number(values[6]) || 0,
-              fat: Number(values[7]) || 0,
-              fiber: Number(values[8]) || 0,
-              sugar: Number(values[9]) || 0,
-              sodium: Number(values[10]) || 0,
-              image_url: values[11] || '',
+              image_url: values[6] || null,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             };
