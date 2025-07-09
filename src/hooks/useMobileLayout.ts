@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 
 interface UseMobileLayoutReturn {
@@ -18,8 +19,8 @@ interface UseMobileLayoutReturn {
 }
 
 export const useMobileLayout = (): UseMobileLayoutReturn => {
-  const [screenWidth, setScreenWidth] = useState(0);
-  const [screenHeight, setScreenHeight] = useState(0);
+  const [screenWidth, setScreenWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
+  const [screenHeight, setScreenHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 768);
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
   const [safeAreaInsets, setSafeAreaInsets] = useState({
     top: 0,
@@ -28,14 +29,14 @@ export const useMobileLayout = (): UseMobileLayoutReturn => {
     right: 0
   });
 
-  // Breakpoints
+  // Breakpoints - Using standard mobile-first approach
   const isMobile = screenWidth < 768;
   const isTablet = screenWidth >= 768 && screenWidth < 1024;
   const isDesktop = screenWidth >= 1024;
 
-  // Touch and hover detection
-  const isTouch = typeof window !== 'undefined' && 'ontouchstart' in window;
-  const hasHover = typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches;
+  // Touch and hover detection with fallbacks
+  const [isTouch, setIsTouch] = useState(false);
+  const [hasHover, setHasHover] = useState(true);
 
   // Update screen dimensions
   const updateDimensions = () => {
@@ -46,16 +47,29 @@ export const useMobileLayout = (): UseMobileLayoutReturn => {
     }
   };
 
+  // Detect touch capability
+  const updateTouchCapability = () => {
+    if (typeof window !== 'undefined') {
+      setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0);
+      setHasHover(window.matchMedia('(hover: hover)').matches);
+    }
+  };
+
   // Get safe area insets for mobile devices
   const updateSafeAreaInsets = () => {
-    if (typeof window !== 'undefined' && CSS.supports('padding-top: env(safe-area-inset-top)')) {
+    if (typeof window !== 'undefined') {
       const computedStyle = getComputedStyle(document.documentElement);
       
-      // Try to get safe area insets from CSS environment variables
-      const top = parseInt(computedStyle.getPropertyValue('--safe-area-inset-top') || '0');
-      const bottom = parseInt(computedStyle.getPropertyValue('--safe-area-inset-bottom') || '0');
-      const left = parseInt(computedStyle.getPropertyValue('--safe-area-inset-left') || '0');
-      const right = parseInt(computedStyle.getPropertyValue('--safe-area-inset-right') || '0');
+      // Parse safe area insets from CSS environment variables
+      const parseInset = (value: string) => {
+        const num = parseFloat(value.replace('px', ''));
+        return isNaN(num) ? 0 : num;
+      };
+
+      const top = parseInset(computedStyle.getPropertyValue('--safe-area-inset-top'));
+      const bottom = parseInset(computedStyle.getPropertyValue('--safe-area-inset-bottom'));
+      const left = parseInset(computedStyle.getPropertyValue('--safe-area-inset-left'));
+      const right = parseInset(computedStyle.getPropertyValue('--safe-area-inset-right'));
 
       setSafeAreaInsets({ top, bottom, left, right });
     }
@@ -64,7 +78,11 @@ export const useMobileLayout = (): UseMobileLayoutReturn => {
   // Set up CSS custom properties for safe area insets
   const setupSafeAreaCSS = () => {
     if (typeof document !== 'undefined') {
+      const existingStyle = document.getElementById('mobile-layout-styles');
+      if (existingStyle) return; // Already set up
+
       const style = document.createElement('style');
+      style.id = 'mobile-layout-styles';
       style.textContent = `
         :root {
           --safe-area-inset-top: env(safe-area-inset-top, 0px);
@@ -84,11 +102,6 @@ export const useMobileLayout = (): UseMobileLayoutReturn => {
           padding-right: env(safe-area-inset-right, 0px);
         }
         
-        .safe-area-mt { margin-top: env(safe-area-inset-top, 0px); }
-        .safe-area-mb { margin-bottom: env(safe-area-inset-bottom, 0px); }
-        .safe-area-ml { margin-left: env(safe-area-inset-left, 0px); }
-        .safe-area-mr { margin-right: env(safe-area-inset-right, 0px); }
-        
         /* Mobile-specific optimizations */
         @media (max-width: 767px) {
           .mobile-optimized {
@@ -104,7 +117,7 @@ export const useMobileLayout = (): UseMobileLayoutReturn => {
           }
           
           .mobile-input {
-            font-size: 16px; /* Prevents zoom on iOS */
+            font-size: 16px !important; /* Prevents zoom on iOS */
           }
           
           .mobile-button {
@@ -122,14 +135,6 @@ export const useMobileLayout = (): UseMobileLayoutReturn => {
           .touch-friendly {
             padding: 12px;
             margin: 4px;
-          }
-        }
-        
-        /* High DPI displays */
-        @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-          .high-dpi-optimized {
-            image-rendering: -webkit-optimize-contrast;
-            image-rendering: crisp-edges;
           }
         }
       `;
@@ -154,37 +159,13 @@ export const useMobileLayout = (): UseMobileLayoutReturn => {
     }
   };
 
-  // Prevent zoom on double tap (iOS)
-  const preventDoubleTabZoom = () => {
-    if (typeof document !== 'undefined' && isMobile) {
-      let lastTouchEnd = 0;
-      
-      const handleTouchEnd = (e: TouchEvent) => {
-        const now = new Date().getTime();
-        if (now - lastTouchEnd <= 300) {
-          e.preventDefault();
-        }
-        lastTouchEnd = now;
-      };
-      
-      document.addEventListener('touchend', handleTouchEnd, { passive: false });
-      
-      return () => {
-        document.removeEventListener('touchend', handleTouchEnd);
-      };
-    }
-  };
-
   // Initialize on mount
   useEffect(() => {
     updateDimensions();
+    updateTouchCapability();
     updateSafeAreaInsets();
     setupSafeAreaCSS();
     setupViewportMeta();
-    
-    const cleanup = preventDoubleTabZoom();
-    
-    return cleanup;
   }, []);
 
   // Listen for resize and orientation changes
@@ -202,18 +183,20 @@ export const useMobileLayout = (): UseMobileLayoutReturn => {
       }, 100);
     };
 
-    window.addEventListener('resize', handleResize);
-    window.addEventListener('orientationchange', handleOrientationChange);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleResize);
+      window.addEventListener('orientationchange', handleOrientationChange);
 
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('orientationchange', handleOrientationChange);
-    };
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        window.removeEventListener('orientationchange', handleOrientationChange);
+      };
+    }
   }, []);
 
   // Handle keyboard visibility on mobile
   useEffect(() => {
-    if (isMobile && typeof window !== 'undefined') {
+    if (isMobile && typeof window !== 'undefined' && window.visualViewport) {
       const handleVisualViewportChange = () => {
         if (window.visualViewport) {
           const keyboardHeight = window.innerHeight - window.visualViewport.height;
@@ -221,13 +204,11 @@ export const useMobileLayout = (): UseMobileLayoutReturn => {
         }
       };
 
-      if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', handleVisualViewportChange);
-        
-        return () => {
-          window.visualViewport?.removeEventListener('resize', handleVisualViewportChange);
-        };
-      }
+      window.visualViewport.addEventListener('resize', handleVisualViewportChange);
+      
+      return () => {
+        window.visualViewport?.removeEventListener('resize', handleVisualViewportChange);
+      };
     }
   }, [isMobile]);
 

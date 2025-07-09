@@ -36,6 +36,7 @@ const MealEntryForm: React.FC<MealEntryFormProps> = ({
   const { actions } = useData();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState<string>('');
+  const [hasSubmitted, setHasSubmitted] = useState(false);
 
   const form = useForm<MealFormData>({
     resolver: zodResolver(mealSchema),
@@ -48,20 +49,31 @@ const MealEntryForm: React.FC<MealEntryFormProps> = ({
     },
   });
 
-  // Reset form when meal prop changes (for editing)
+  // Reset form when dialog opens/closes or meal changes
   useEffect(() => {
-    if (meal) {
-      form.setValue('food_name', meal.food_name);
-      form.setValue('amount', meal.amount);
-      form.setValue('calories', meal.calories);
-      form.setValue('protein', meal.protein);
-      form.setValue('image_url', meal.image_url || '');
-      setImagePreview(meal.image_url || '');
-    } else {
-      form.reset();
-      setImagePreview('');
+    if (isOpen) {
+      setHasSubmitted(false);
+      setIsSubmitting(false);
+      
+      if (meal) {
+        form.setValue('food_name', meal.food_name);
+        form.setValue('amount', meal.amount);
+        form.setValue('calories', meal.calories);
+        form.setValue('protein', meal.protein);
+        form.setValue('image_url', meal.image_url || '');
+        setImagePreview(meal.image_url || '');
+      } else {
+        form.reset({
+          food_name: '',
+          amount: '',
+          calories: 0,
+          protein: 0,
+          image_url: '',
+        });
+        setImagePreview('');
+      }
     }
-  }, [meal, form]);
+  }, [isOpen, meal, form]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -81,9 +93,25 @@ const MealEntryForm: React.FC<MealEntryFormProps> = ({
     form.setValue('image_url', '');
   };
 
+  const handleClose = () => {
+    if (!isSubmitting) {
+      form.reset();
+      setImagePreview('');
+      setHasSubmitted(false);
+      setIsSubmitting(false);
+      onClose();
+    }
+  };
+
   const onSubmit = async (data: MealFormData) => {
+    // Prevent duplicate submissions
+    if (isSubmitting || hasSubmitted) {
+      return;
+    }
+
     try {
       setIsSubmitting(true);
+      setHasSubmitted(true);
       
       if (meal) {
         // Update existing meal
@@ -110,20 +138,30 @@ const MealEntryForm: React.FC<MealEntryFormProps> = ({
         await actions.addMeal(mealData);
       }
       
+      // Reset form state
       form.reset();
       setImagePreview('');
+      setHasSubmitted(false);
+      
+      // Call success callback and close
       onSuccess?.();
-      onClose();
+      
+      // Small delay to ensure state updates
+      setTimeout(() => {
+        setIsSubmitting(false);
+        onClose();
+      }, 100);
+      
     } catch (error) {
       console.error('Error submitting meal:', error);
-    } finally {
+      setHasSubmitted(false);
       setIsSubmitting(false);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md mobile-optimized">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold flex items-center gap-2">
             🍽️ {meal ? 'Edit Meal' : 'Add New Meal'}
@@ -139,7 +177,12 @@ const MealEntryForm: React.FC<MealEntryFormProps> = ({
                 <FormItem>
                   <FormLabel>Food Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Grilled Chicken Breast" {...field} />
+                    <Input 
+                      placeholder="e.g., Grilled Chicken Breast" 
+                      className="mobile-input"
+                      disabled={isSubmitting}
+                      {...field} 
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -153,7 +196,12 @@ const MealEntryForm: React.FC<MealEntryFormProps> = ({
                 <FormItem>
                   <FormLabel>Amount</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., 150g, 1 cup, 2 slices" {...field} />
+                    <Input 
+                      placeholder="e.g., 150g, 1 cup, 2 slices" 
+                      className="mobile-input"
+                      disabled={isSubmitting}
+                      {...field} 
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -171,6 +219,8 @@ const MealEntryForm: React.FC<MealEntryFormProps> = ({
                       <Input
                         type="number"
                         placeholder="250"
+                        className="mobile-input"
+                        disabled={isSubmitting}
                         {...field}
                         onChange={(e) => field.onChange(Number(e.target.value))}
                       />
@@ -191,6 +241,8 @@ const MealEntryForm: React.FC<MealEntryFormProps> = ({
                         type="number"
                         step="0.1"
                         placeholder="30.5"
+                        className="mobile-input"
+                        disabled={isSubmitting}
                         {...field}
                         onChange={(e) => field.onChange(Number(e.target.value))}
                       />
@@ -217,15 +269,16 @@ const MealEntryForm: React.FC<MealEntryFormProps> = ({
                     size="sm"
                     className="absolute top-2 right-2 h-6 w-6 p-0"
                     onClick={removeImage}
+                    disabled={isSubmitting}
                   >
                     <X className="h-3 w-3" />
                   </Button>
                 </div>
               ) : (
-                <label htmlFor="image" className="cursor-pointer block">
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-                    <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                    <span className="text-sm text-gray-600">Click to add photo</span>
+                <label htmlFor="image" className={`cursor-pointer block ${isSubmitting ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-border/80 transition-colors touch-friendly">
+                    <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Click to add photo</span>
                   </div>
                   <input
                     id="image"
@@ -233,19 +286,26 @@ const MealEntryForm: React.FC<MealEntryFormProps> = ({
                     accept="image/*"
                     onChange={handleImageChange}
                     className="hidden"
+                    disabled={isSubmitting}
                   />
                 </label>
               )}
             </div>
 
             <div className="flex gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={handleClose} 
+                className="flex-1 mobile-button"
+                disabled={isSubmitting}
+              >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                disabled={isSubmitting}
-                className="flex-1 bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
+                disabled={isSubmitting || hasSubmitted}
+                className="flex-1 bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 mobile-button"
               >
                 {isSubmitting ? (
                   <>

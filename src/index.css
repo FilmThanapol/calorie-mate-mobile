@@ -50,43 +50,43 @@ All colors MUST be HSL.
   }
 
   .dark {
-    /* Enhanced dark mode with proper contrast ratios and cute colors */
-    --background: 240 10% 3.9%; /* Deep dark blue-gray */
-    --foreground: 0 0% 98%; /* Pure white text */
+    /* Enhanced dark mode with proper contrast ratios and improved readability */
+    --background: 222 84% 4.9%; /* Deep navy blue background */
+    --foreground: 210 40% 98%; /* High contrast white text */
 
-    --card: 240 10% 6%; /* Slightly lighter dark cards */
-    --card-foreground: 0 0% 95%; /* Off-white text */
+    --card: 222 47% 11%; /* Slightly lighter navy for cards */
+    --card-foreground: 210 40% 98%; /* High contrast white text on cards */
 
-    --popover: 240 10% 6%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 210 40% 98%; /* White primary for high contrast */
+    --primary-foreground: 222 84% 4.9%; /* Dark text on light primary */
 
-    --secondary: 240 8% 15%; /* Warm dark gray */
-    --secondary-foreground: 0 0% 90%;
+    --secondary: 217 32.6% 17.5%; /* Muted blue-gray secondary */
+    --secondary-foreground: 210 40% 98%; /* White text on secondary */
 
-    --muted: 240 8% 15%;
-    --muted-foreground: 240 5% 65%; /* Lighter muted text */
+    --muted: 217 32.6% 17.5%; /* Consistent muted background */
+    --muted-foreground: 215 20.2% 65.1%; /* Better contrast muted text */
 
-    --accent: 240 8% 15%;
-    --accent-foreground: 0 0% 90%;
+    --accent: 217 32.6% 17.5%; /* Consistent accent background */
+    --accent-foreground: 210 40% 98%; /* White text on accent */
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 62.8% 50%; /* Slightly less vibrant red for better readability */
     --destructive-foreground: 210 40% 98%;
 
-    --border: 240 8% 20%; /* Subtle borders */
-    --input: 240 8% 15%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 217 32.6% 22%; /* More visible borders */
+    --input: 217 32.6% 17.5%; /* Input background matches secondary */
+    --ring: 212.7 26.8% 83.9%; /* Light ring for focus states */
 
-    --sidebar-background: 240 10% 3.9%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 8% 15%;
-    --sidebar-accent-foreground: 0 0% 90%;
-    --sidebar-border: 240 8% 20%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 222 84% 4.9%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 210 100% 70%; /* Bright blue sidebar primary */
+    --sidebar-primary-foreground: 222 84% 4.9%;
+    --sidebar-accent: 217 32.6% 17.5%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 32.6% 22%;
+    --sidebar-ring: 212.7 26.8% 83.9%;
   }
 }
 
@@ -99,6 +99,8 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
     transition: background-color 500ms ease-in-out, color 500ms ease-in-out;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.6;
   }
 
   /* Smooth transitions for all elements */
@@ -106,6 +108,34 @@ All colors MUST be HSL.
     transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: 300ms;
+  }
+
+  /* Improved text contrast in dark mode */
+  .dark {
+    color-scheme: dark;
+  }
+
+  .dark * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(217 32.6% 25%) hsl(222 47% 11%);
+  }
+
+  .dark *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .dark *::-webkit-scrollbar-track {
+    background: hsl(222 47% 11%);
+  }
+
+  .dark *::-webkit-scrollbar-thumb {
+    background: hsl(217 32.6% 25%);
+    border-radius: 4px;
+  }
+
+  .dark *::-webkit-scrollbar-thumb:hover {
+    background: hsl(217 32.6% 35%);
   }
 }
 
@@ -169,6 +199,51 @@ All colors MUST be HSL.
     background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #feca57, #ff9ff3, #f368e0);
     background-size: 400% 400%;
     animation: rainbowShift 3s ease infinite;
+  }
+
+  /* Mobile-optimized components */
+  .mobile-card {
+    @apply bg-white/95 dark:bg-card/95 backdrop-blur-sm shadow-lg border border-border/50 rounded-xl transition-all duration-300;
+  }
+
+  .mobile-input {
+    @apply text-base; /* Prevents zoom on iOS */
+  }
+
+  .mobile-button {
+    @apply min-h-11 min-w-11 touch-manipulation; /* iOS recommended touch target size */
+  }
+
+  /* Better button contrast in dark mode */
+  .dark .btn-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90;
+  }
+
+  .dark .btn-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80;
+  }
+
+  /* Improved form elements in dark mode */
+  .dark input,
+  .dark textarea,
+  .dark select {
+    @apply bg-input border-border text-foreground;
+  }
+
+  .dark input:focus,
+  .dark textarea:focus,
+  .dark select:focus {
+    @apply ring-ring border-ring/50;
+  }
+
+  /* Better visibility for disabled elements */
+  .dark *:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  /* Improved modal/dialog contrast */
+  .dark [role="dialog"] {
+    @apply bg-card border-border shadow-2xl;
   }
 }
 
@@ -265,16 +340,16 @@ All colors MUST be HSL.
   }
 
   .custom-scrollbar::-webkit-scrollbar-track {
-    @apply bg-pink-100 dark:bg-gray-800 rounded-full;
+    @apply bg-muted rounded-full;
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-gradient-to-b from-pink-300 to-purple-300 dark:from-gray-600 dark:to-gray-500 rounded-full hover:from-pink-400 hover:to-purple-400 dark:hover:from-gray-500 dark:hover:to-gray-400;
+    @apply bg-muted-foreground/30 rounded-full hover:bg-muted-foreground/50;
   }
 
   /* Enhanced focus styles for accessibility */
   .focus-ring {
-    @apply focus:outline-none focus:ring-2 focus:ring-pink-500 dark:focus:ring-pink-400 focus:ring-offset-2 dark:focus:ring-offset-gray-800 focus:ring-offset-white;
+    @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background;
   }
 
   /* Cute shadow utilities */
@@ -283,7 +358,66 @@ All colors MUST be HSL.
   }
 
   .dark .shadow-cute {
-    box-shadow: 0 8px 25px -5px rgba(236, 72, 153, 0.4), 0 8px 10px -6px rgba(236, 72, 153, 0.2);
+    box-shadow: 0 8px 25px -5px rgba(139, 92, 246, 0.4), 0 8px 10px -6px rgba(139, 92, 246, 0.2);
+  }
+
+  /* Mobile-specific utilities */
+  @media (max-width: 767px) {
+    .mobile-optimized {
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    
+    .mobile-scroll {
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+    
+    .mobile-safe {
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+  }
+
+  /* Touch-friendly interactions */
+  @media (hover: none) and (pointer: coarse) {
+    .hover-only {
+      display: none !important;
+    }
+    
+    .touch-friendly {
+      padding: 12px;
+      margin: 4px;
+    }
+  }
+
+  /* High DPI displays */
+  @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .high-dpi-optimized {
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+    }
+  }
+
+  /* Improved text readability */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  /* Better button states */
+  .btn-active {
+    @apply bg-primary text-primary-foreground;
+  }
+
+  .dark .btn-active {
+    @apply bg-primary/90 text-primary-foreground;
   }
 }
 
@@ -301,6 +435,14 @@ All colors MUST be HSL.
   filter: drop-shadow(0 6px 12px rgba(236, 72, 153, 0.3));
 }
 
+.dark .progress-ring {
+  filter: drop-shadow(0 4px 8px rgba(139, 92, 246, 0.3));
+}
+
+.dark .progress-ring:hover {
+  filter: drop-shadow(0 6px 12px rgba(139, 92, 246, 0.4));
+}
+
 /* Cute button hover effects */
 button:hover {
   transform: translateY(-2px);
@@ -308,4 +450,12 @@ button:hover {
 
 button:active {
   transform: translateY(0);
+}
+
+/* Mobile navigation styling */
+@media (max-width: 767px) {
+  .mobile-nav {
+    @apply fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
